@@ -1,0 +1,146 @@
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class BaseDao {
+	
+	static String url = "jdbc:sqlserver://localhost:1433;DatabaseName=aaa";
+	static String driver = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
+	static String user = "sa";
+	static String password = "123@qwe";
+	static Connection conn = null;
+	PreparedStatement ps = null;
+	ResultSet rs = null;
+	static { 
+		try {
+			Class.forName(driver);
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	public static Connection getConnection() {
+		try {
+			conn = DriverManager.getConnection(url, user, password);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return conn;
+		
+	}
+	/**
+	 * 增删改和查找公共方法
+	 * @param sql
+	 * @param params
+	 * @return
+	 */
+	public PreparedStatement setParamter(String sql,Object[] params) {
+		try {
+			ps = conn.prepareStatement(sql);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		if (params!=null) {
+			for (int i = 0; i < params.length; i++) {
+				try {
+					ps.setObject(i+1, params[i]);
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return ps;
+	}
+	/**
+	 * 通用增删改的方法
+	 * @param sql
+	 * @param params
+	 * @return
+	 */
+	public boolean executeUpdate(String sql,Object[] params) {
+		conn = getConnection();
+		int ret;
+		try {
+			ret = setParamter(sql, params).executeUpdate();
+			if (ret>0) {
+				System.out.println("success");
+				return true;
+			}else {
+				System.out.println("fail");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}finally{
+			closeConnection(conn, ps, rs);
+		}
+		return false;
+		
+	}
+	
+	/**
+	 * 通用查找方法
+	 * @param sql
+	 * @param params
+	 * @return
+	 */
+	public List<Map<String, Object>> executeQuery(String sql,Object[] params) {
+		conn = getConnection();
+		List<Map<String, Object>> objList = new ArrayList<Map<String,Object>>();
+		try {
+			rs = setParamter(sql, params).executeQuery();
+			ResultSetMetaData rsmd = rs.getMetaData();
+			while(rs.next()){
+				Map<String, Object> rowMap = new HashMap<String, Object>();
+				for (int i = 0; i < rsmd.getColumnCount(); i++) {
+					rowMap.put(rsmd.getColumnName(i+1).toLowerCase(), rs.getObject(i+1));
+				}
+				objList.add(rowMap);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}finally{
+			closeConnection(conn, ps, rs);
+		}
+		return objList; 
+	}
+	/**
+	 * 关闭连接
+	 * @param conn
+	 * @param ps
+	 * @param rs
+	 */
+	public void closeConnection(Connection conn,PreparedStatement ps,ResultSet rs) {
+		if (rs!=null) {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+		if (ps!=null) {
+			try {
+				ps.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+		if (conn!=null) {
+			try {
+				conn.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	
+}
